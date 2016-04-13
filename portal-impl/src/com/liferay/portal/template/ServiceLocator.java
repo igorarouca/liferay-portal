@@ -19,6 +19,9 @@ import com.liferay.portal.kernel.bean.PortalBeanLocatorUtil;
 import com.liferay.portal.kernel.bean.PortletBeanLocatorUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.registry.Filter;
+import com.liferay.registry.Registry;
+import com.liferay.registry.RegistryUtil;
 
 /**
  * @author Brian Wing Shun Chan
@@ -34,6 +37,12 @@ public class ServiceLocator {
 
 		try {
 			bean = PortalBeanLocatorUtil.locate(_getServiceName(serviceName));
+
+			if (bean == null) {
+				Registry registry = RegistryUtil.getRegistry();
+
+				bean = registry.getService(serviceName);
+			}
 		}
 		catch (Exception e) {
 			_log.error(e, e);
