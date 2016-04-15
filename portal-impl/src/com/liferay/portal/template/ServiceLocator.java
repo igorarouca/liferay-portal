@@ -38,8 +38,7 @@ public class ServiceLocator {
 		Object bean = null;
 
 		try {
-			bean = PortalBeanLocatorUtil.locate(
-				_getServiceName(serviceName));
+			bean = PortalBeanLocatorUtil.locate(_getServiceName(serviceName));
 
 			if (bean == null) {
 				Registry registry = RegistryUtil.getRegistry();
