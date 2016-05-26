@@ -139,6 +139,7 @@ public class FileSystemImporter extends BaseImporter {
 		MimeTypes mimeTypes, Portal portal,
 		PortletPreferencesFactory portletPreferencesFactory,
 		PortletPreferencesLocalService portletPreferencesLocalService,
+		PortletPreferencesTranslator defaultPortletPreferencesTranslator,
 		Map<String, PortletPreferencesTranslator> portletPreferencesTranslators,
 		RepositoryLocalService repositoryLocalService, SAXReader saxReader,
 		ThemeLocalService themeLocalService) {
@@ -163,7 +164,12 @@ public class FileSystemImporter extends BaseImporter {
 		this.portal = portal;
 		this.portletPreferencesFactory = portletPreferencesFactory;
 		this.portletPreferencesLocalService = portletPreferencesLocalService;
-		this.portletPreferencesTranslators = portletPreferencesTranslators;
+
+		this.portletPreferencesTranslators =
+			new DefaultedPortletPreferencesTranslatorMap(
+				portletPreferencesTranslators,
+				defaultPortletPreferencesTranslator);
+
 		this.repositoryLocalService = repositoryLocalService;
 		this.saxReader = saxReader;
 		this.themeLocalService = themeLocalService;
@@ -1706,35 +1712,37 @@ public class FileSystemImporter extends BaseImporter {
 	protected void resetLayoutColumns(Layout layout) {
 		UnicodeProperties typeSettings = layout.getTypeSettingsProperties();
 
-		int count = 1;
+		Set<String> typeSettingsKeys = typeSettings.keySet();
+		Set<String> columnsToRemove = new HashSet<>();
 
-		do {
-			String portletIds = typeSettings.remove("column-" + count++);
+		for (String key : typeSettingsKeys) {
+			if (key.startsWith("column-")) {
+				String portletIds = typeSettings.get(key);
 
-			if (Validator.isNull(portletIds)) {
-				break;
-			}
+				columnsToRemove.add(key);
 
-			String[] portletIdsArray = StringUtil.split(portletIds);
+				String[] portletIdsArray = StringUtil.split(portletIds);
 
-			for (String portletId : portletIdsArray) {
-				try {
-					portletPreferencesLocalService.deletePortletPreferences(
-						PortletKeys.PREFS_OWNER_ID_DEFAULT,
-						PortletKeys.PREFS_OWNER_TYPE_LAYOUT, layout.getPlid(),
-						portletId);
-				}
-				catch (PortalException pe) {
-					if (_log.isWarnEnabled()) {
-						_log.warn(
-							"Unable to delete portlet preferences for " +
-								"portlet " + portletId,
-							pe);
+				for (String portletId : portletIdsArray) {
+					try {
+						portletPreferencesLocalService.deletePortletPreferences(
+							PortletKeys.PREFS_OWNER_ID_DEFAULT,
+							PortletKeys.PREFS_OWNER_TYPE_LAYOUT,
+							layout.getPlid(), portletId);
+					}
+					catch (PortalException pe) {
+						if (_log.isWarnEnabled()) {
+							_log.warn(
+								"Unable to delete portlet preferences for " +
+									"portlet " + portletId,
+								pe);
+						}
 					}
 				}
 			}
 		}
-		while (true);
+
+		typeSettingsKeys.removeAll(columnsToRemove);
 
 		layout.setTypeSettingsProperties(typeSettings);
 
@@ -2008,5 +2016,34 @@ public class FileSystemImporter extends BaseImporter {
 		"\\[\\$FILE=([^\\$]+)\\$\\]");
 	private final Map<String, Set<Long>> _primaryKeys = new HashMap<>();
 	private File _resourcesDir;
+
+	private class DefaultedPortletPreferencesTranslatorMap
+		extends HashMap<String, PortletPreferencesTranslator> {
+
+		public DefaultedPortletPreferencesTranslatorMap(
+			Map<String, PortletPreferencesTranslator>
+				portletPreferencesTranslators,
+			PortletPreferencesTranslator defaultPortletPreferencesTranslator) {
+
+			super(portletPreferencesTranslators);
+			_defaultPortletPreferencesTranslator =
+				defaultPortletPreferencesTranslator;
+		}
+
+		@Override
+		public PortletPreferencesTranslator get(Object key) {
+			PortletPreferencesTranslator value = super.get(key);
+
+			if (value == null) {
+				value = _defaultPortletPreferencesTranslator;
+			}
+
+			return value;
+		}
+
+		private final PortletPreferencesTranslator
+			_defaultPortletPreferencesTranslator;
+
+	}
 
 }

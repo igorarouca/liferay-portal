@@ -262,7 +262,7 @@ public class AppLocalServiceImpl extends AppLocalServiceBaseImpl {
 					"Unable to open file at " + app.getFilePath());
 			}
 
-			StringBundler sb = new StringBundler(7);
+			StringBundler sb = new StringBundler(5);
 
 			sb.append(SystemProperties.get(SystemProperties.TMP_DIR));
 			sb.append(StringPool.SLASH);
@@ -492,12 +492,6 @@ public class AppLocalServiceImpl extends AppLocalServiceBaseImpl {
 		}
 	}
 
-	private static final Log _log = LogFactoryUtil.getLog(
-		AppLocalServiceImpl.class);
-
-	private List<App> _installedApps;
-	private Map<String, String> _prepackagedApps;
-
 	/**
 	 * @see com.liferay.portal.util.FileImpl#_SAFE_FILE_NAME_1
 	 */
@@ -514,5 +508,11 @@ public class AppLocalServiceImpl extends AppLocalServiceBaseImpl {
 		"_BSL_", "_COL_", "_GT_", "_LT_", "_PIP_", "_QUE_", "_QUO_", "_SL_",
 		"_ST_"
 	};
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		AppLocalServiceImpl.class);
+
+	private List<App> _installedApps;
+	private Map<String, String> _prepackagedApps;
 
 }
