@@ -14,17 +14,56 @@
 
 package com.liferay.portal.spring.extender.internal.hibernate.configuration;
 
+import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.spring.extender.internal.context.ModuleApplicationContext;
 import com.liferay.portal.spring.hibernate.PortletHibernateConfiguration;
 
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+
+import javax.sql.DataSource;
+import java.util.Dictionary;
 
 /**
  * @author Miguel Pastor
  */
 public class ModuleHibernateConfiguration
-	extends PortletHibernateConfiguration implements ApplicationContextAware {
+	extends PortletHibernateConfiguration
+	implements ApplicationContextAware,
+		ApplicationListener<ContextRefreshedEvent> {
+
+	@Override
+	public void onApplicationEvent(
+		ContextRefreshedEvent contextRefreshedEvent) {
+
+		ApplicationContext applicationContext =
+			contextRefreshedEvent.getApplicationContext();
+
+		ModuleApplicationContext moduleApplicationContext =
+			(ModuleApplicationContext)applicationContext;
+
+		BundleContext bundleContext =
+			moduleApplicationContext.getBundleContext();
+
+		Bundle bundle = bundleContext.getBundle();
+
+		Dictionary<String, String> headers = bundle.getHeaders();
+
+		String externalDataSourceName = headers.get(
+			"Liferay-External-Data-Source-Name");
+
+		if (Validator.isNull(externalDataSourceName)) {
+			DataSource externalDataSource =
+				(DataSource)applicationContext.getBean("dataSourceName");
+
+			setDataSource(externalDataSource);
+		}
+	}
 
 	public ModuleHibernateConfiguration() {
 		this(null);
