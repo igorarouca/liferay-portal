@@ -15,6 +15,8 @@
 package com.liferay.portal.spring.extender.internal.hibernate.session;
 
 import com.liferay.portal.dao.orm.hibernate.PortletSessionFactoryImpl;
+import com.liferay.portal.kernel.service.persistence.impl.BasePersistenceImpl;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.spring.extender.internal.classloader.BundleResolverClassLoader;
 import com.liferay.portal.spring.extender.internal.context.ModuleApplicationContext;
 import com.liferay.portal.spring.extender.internal.hibernate.configuration.ModuleHibernateConfiguration;
@@ -23,17 +25,66 @@ import javax.sql.DataSource;
 
 import org.hibernate.SessionFactory;
 
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+
+import java.util.Dictionary;
+import java.util.Map;
 
 /**
  * @author Miguel Pastor
  */
 public class ModuleSessionFactory
-	extends PortletSessionFactoryImpl implements ApplicationContextAware {
+	extends PortletSessionFactoryImpl
+	implements
+		ApplicationContextAware, ApplicationListener<ContextRefreshedEvent> {
+
+	@Override
+	public void onApplicationEvent(
+		ContextRefreshedEvent contextRefreshedEvent) {
+
+		ApplicationContext applicationContext =
+			contextRefreshedEvent.getApplicationContext();
+
+		ModuleApplicationContext moduleApplicationContext =
+			(ModuleApplicationContext)applicationContext;
+
+		BundleContext bundleContext =
+			moduleApplicationContext.getBundleContext();
+
+		Bundle bundle = bundleContext.getBundle();
+
+		Dictionary<String, String> headers = bundle.getHeaders();
+
+		String externalDataSourceName = headers.get(
+			"Liferay-External-Data-Source-Name");
+
+		if (Validator.isNull(externalDataSourceName)) {
+			DataSource externalDataSource =
+				(DataSource)applicationContext.getBean("dataSourceName");
+
+			setDataSource(externalDataSource);
+
+			Map<String, BasePersistenceImpl> beanPersistenceImpls =
+				applicationContext.getBeansOfType(BasePersistenceImpl.class);
+
+
+			for (String name : beanPersistenceImpls.keySet()) {
+				BasePersistenceImpl<?> beanPersistenceImpl =
+					beanPersistenceImpls.get(name);
+
+				if (beanPersistenceImpl.getDataSource() == externalDataSource) {
+					beanPersistenceImpl.setSessionFactory(this);
+				}
+			}
+		}
+	}
 
 	@Override
 	public ClassLoader getSessionFactoryClassLoader() {
